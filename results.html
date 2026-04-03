@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>سجل نتائج الطلاب المطور</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
+        /* تصميم شريط البحث والتحكم */
+        .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; gap: 15px; }
+        .search-box { flex-grow: 1; position: relative; }
+        .search-box input { width: 100%; padding: 12px 40px 12px 15px; border: 2px solid #dfe1e5; border-radius: 10px; font-size: 16px; outline: none; transition: 0.3s; }
+        .search-box input:focus { border-color: #1a73e8; box-shadow: 0 0 8px rgba(26,115,232,0.2); }
+        .search-box::before { content: '🔍'; position: absolute; right: 15px; top: 12px; font-size: 18px; }
+
+        .btn-print { background: #1a73e8; color: white; border: none; padding: 12px 25px; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-print:hover { background: #1557b0; }
+
+        /* الجدول */
+        table { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
+        th { background: #f8f9fa; color: #5f6368; padding: 15px; text-align: right; border-bottom: 2px solid #eee; }
+        td { background: white; padding: 15px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
+        tr td:first-child { border-right: 1px solid #eee; border-radius: 0 10px 10px 0; }
+        tr td:last-child { border-left: 1px solid #eee; border-radius: 10px 0 0 10px; }
+        
+        .badge { padding: 6px 15px; border-radius: 50px; font-size: 13px; font-weight: 600; display: inline-block; }
+        .pass { background: #e6ffed; color: #1e8e3e; }
+        .fail { background: #fff1f0; color: #d93025; }
+        
+        @media print { .controls { display: none; } .container { box-shadow: none; width: 100%; max-width: 100%; } }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>📊 لوحة متابعة نتائج الطلاب</h1>
+        
+        <div class="controls">
+            <div class="search-box">
+                <input type="text" id="searchInput" onkeyup="filterResults()" placeholder="ابحث عن اسم الطالب...">
+            </div>
+            <button class="btn-print" onclick="window.print()">🖨️ طباعة التقرير</button>
+        </div>
+
+        <table id="resultsTable">
+            <thead>
+                <tr>
+                    <th>الاسم الثلاثي</th>
+                    <th>الدرجة النهائية</th>
+                    <th>تاريخ التقديم</th>
+                    <th>الحالة التقديرية</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- سيتم ملؤه بواسطة JavaScript -->
+            </tbody>
+        </table>
+        <div id="noResult" style="display:none; text-align:center; padding:20px; color:#777;">لا توجد نتائج مطابقة للبحث.</div>
+    </div>
+
+    <script>
+        let allResultsData = [];
+
+        async function fetchResults() {
+            const res = await fetch('/api/get-all-results');
+            allResultsData = await res.json();
+            renderTable(allResultsData.reverse());
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            data.forEach(r => {
+                const [score, total] = r.score.split(' / ').map(Number);
+                const isPass = (score / total) >= 0.5;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><b>${r.name}</b></td>
+                        <td><span style="font-family:monospace; font-size:1.1em">${r.score}</span></td>
+                        <td style="color:#666; font-size:0.9em">${r.date}</td>
+                        <td>
+                            <span class="badge ${isPass ? 'pass' : 'fail'}">
+                                ${isPass ? 'ناجح ✅' : 'راسب ❌'}
+                            </span>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function filterResults() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allResultsData.filter(r => r.name.toLowerCase().includes(query));
+            
+            renderTable(filtered);
+            
+            const noResult = document.getElementById('noResult');
+            noResult.style.display = filtered.length === 0 ? 'block' : 'none';
+        }
+
+        // تحميل البيانات عند فتح الصفحة
+        fetchResults();
+    </script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>امتحان إلكتروني</title>
+    <style>
+        body { font-family: sans-serif; background: #e9ecef; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); width: 400px; text-align: center; }
+        #exam-ui { display: none; text-align: right; width: 600px; }
+        .option { display: block; background: #f8f9fa; padding: 10px; margin: 10px 0; border: 1px solid #ddd; cursor: pointer; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <!-- شاشة الدخول -->
+    <div id="login-ui" class="box">
+        <h2>مرحباً بك في الامتحان</h2>
+        <input type="text" id="studentName" placeholder="اكتب اسمك الثلاثي" style="width:90%; padding:10px; margin-bottom:10px;">
+        <button onclick="startExam()" style="width:95%; padding:10px; background:#28a745; color:white; border:none; border-radius:5px;">ابدأ الامتحان الآن</button>
+    </div>
+
+    <!-- شاشة الامتحان -->
+    <div id="exam-ui" class="box">
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; margin-bottom:15px;">
+            <h3 id="examTitleDisplay">--</h3>
+            <h3 id="timer" style="color:red;">00:00</h3>
+        </div>
+        <div id="quiz-content"></div>
+        <button onclick="submitExam()" style="width:100%; padding:12px; background:#007bff; color:white; border:none; margin-top:20px;">إنهاء وإرسال</button>
+    </div>
+
+    <script>
+        let examData, studentName;
+
+        async function startExam() {
+            studentName = document.getElementById('studentName').value;
+            if (!studentName) return alert("يرجى إدخال اسمك!");
+            
+            const res = await fetch('/api/get-exam');
+            examData = await res.json();
+            
+            document.getElementById('login-ui').style.display = 'none';
+            document.getElementById('exam-ui').style.display = 'block';
+            document.getElementById('examTitleDisplay').innerText = examData.title;
+            
+            renderQuestions();
+            runTimer(examData.duration * 60);
+        }
+
+        function renderQuestions() {
+            const container = document.getElementById('quiz-content');
+            examData.questions.forEach((q, i) => {
+                let html = `<p><b>س${i+1}:</b> ${q.text}</p>`;
+                q.options.forEach((opt, j) => {
+                    html += `<label class="option"><input type="radio" name="q${i}" value="${j}"> ${opt}</label>`;
+                });
+                container.innerHTML += html;
+            });
+        }
+
+        function runTimer(sec) {
+            let t = sec;
+            setInterval(() => {
+                document.getElementById('timer').innerText = `${Math.floor(t/60)}:${t%60}`;
+                if (t-- <= 0) submitExam();
+            }, 1000);
+        }
+
+        async function submitExam() {
+            let score = 0;
+            examData.questions.forEach((q, i) => {
+                const ans = document.querySelector(`input[name="q${i}"]:checked`);
+                if (ans && parseInt(ans.value) === q.correct) score++;
+            });
+
+            const finalScore = `${score} / ${examData.questions.length}`;
+            await fetch('/api/submit-result', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name: studentName, score: finalScore })
+            });
+
+            alert(`انتهى الامتحان! نتيجتك هي: ${finalScore}`);
+            location.reload();
+        }
+    </script>
+</body>
+</html>
