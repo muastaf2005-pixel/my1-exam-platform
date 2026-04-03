@@ -2,30 +2,134 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>امتحان إلكتروني</title>
+    <title>منصة الاختبارات - إعدادية النهرين المهنية</title>
     <style>
-        body { font-family: sans-serif; background: #e9ecef; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); width: 400px; text-align: center; }
-        #exam-ui { display: none; text-align: right; width: 600px; }
-        .option { display: block; background: #f8f9fa; padding: 10px; margin: 10px 0; border: 1px solid #ddd; cursor: pointer; border-radius: 5px; }
+        @import url('https://googleapis.com');
+
+        :root {
+            --bg-dark: #0a192f;
+            --cyan-bright: #00f2ff;
+            --purple-bright: #d8b4fe;
+            --card-bg: rgba(23, 42, 69, 0.9);
+            --border: #1e3a5f;
+            --text-white: #e6f1ff;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-white);
+            margin: 0; min-height: 100vh;
+            display: flex; flex-direction: column;
+            background-image: radial-gradient(circle at center, #112240 0%, #0a192f 100%);
+        }
+
+        /* اسم المدرسة في الأعلى */
+        .school-header {
+            width: 100%; padding: 15px 30px; border-bottom: 1px solid var(--border);
+            box-sizing: border-box; background: rgba(10, 25, 47, 0.8);
+        }
+        .school-name {
+            color: var(--cyan-bright); font-weight: bold; font-size: 1.1rem;
+            border-left: 4px solid var(--purple-bright); padding-left: 15px;
+        }
+
+        .main-container {
+            flex: 1; display: flex; justify-content: center; align-items: center; padding: 20px;
+        }
+
+        /* صندوق الدخول والامتحان */
+        .glass-box {
+            background: var(--card-bg); border-radius: 24px;
+            padding: 40px; border: 1px solid var(--border);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            width: 100%; max-width: 650px; transition: 0.5s;
+        }
+
+        h2 { color: var(--cyan-bright); text-align: center; margin-bottom: 30px; font-weight: 900; }
+
+        /* مدخلات الدخول */
+        .input-group { margin-bottom: 25px; }
+        input {
+            width: 100%; padding: 15px; background: #050a10;
+            border: 2px solid var(--border); border-radius: 12px;
+            color: white; font-size: 1.1rem; outline: none; transition: 0.3s;
+            box-sizing: border-box; text-align: center;
+        }
+        input:focus { border-color: var(--cyan-bright); box-shadow: 0 0 15px rgba(0, 242, 255, 0.2); }
+
+        /* شاشة الامتحان */
+        #exam-ui { display: none; width: 100%; max-width: 800px; }
+        
+        .exam-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid var(--border);
+        }
+        #timer { color: var(--cyan-bright); font-weight: 900; font-size: 1.5rem; text-shadow: 0 0 10px rgba(0, 242, 255, 0.3); }
+
+        /* تنسيق السؤال والخيارات */
+        .question-block {
+            background: rgba(255,255,255,0.03); padding: 25px;
+            border-radius: 15px; margin-bottom: 25px; border: 1px solid var(--border);
+        }
+        .question-text { font-size: 1.2rem; font-weight: bold; margin-bottom: 20px; color: var(--purple-bright); }
+
+        .option-card {
+            display: block; background: #112240; padding: 15px 20px;
+            margin: 12px 0; border: 1px solid var(--border);
+            border-radius: 12px; cursor: pointer; transition: 0.3s;
+            position: relative;
+        }
+        .option-card:hover { background: #1a3055; border-color: var(--cyan-bright); }
+        .option-card input { position: absolute; opacity: 0; }
+        
+        /* تلوين الخيار المختار */
+        .option-card input:checked + .opt-text { color: var(--cyan-bright); font-weight: bold; }
+        .option-card input:checked ~ .option-card, 
+        .option-card:has(input:checked) { 
+            border-color: var(--cyan-bright); 
+            background: rgba(0, 242, 255, 0.1);
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.1);
+        }
+
+        /* الأزرار */
+        .btn-main {
+            width: 100%; padding: 18px; border: none; border-radius: 12px;
+            font-size: 1.1rem; font-weight: 900; cursor: pointer; transition: 0.3s;
+            font-family: 'Cairo', sans-serif;
+        }
+        .btn-start { background: var(--cyan-bright); color: #0a192f; }
+        .btn-submit { background: linear-gradient(45deg, #00f2ff, #c58fff); color: #0a192f; margin-top: 30px; }
+        .btn-main:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.3); opacity: 0.9; }
+
     </style>
 </head>
 <body>
-    <!-- شاشة الدخول -->
-    <div id="login-ui" class="box">
-        <h2>مرحباً بك في الامتحان</h2>
-        <input type="text" id="studentName" placeholder="اكتب اسمك الثلاثي" style="width:90%; padding:10px; margin-bottom:10px;">
-        <button onclick="startExam()" style="width:95%; padding:10px; background:#28a745; color:white; border:none; border-radius:5px;">ابدأ الامتحان الآن</button>
+
+    <div class="school-header">
+        <div class="school-name">| إعدادية النهرين المهنية</div>
     </div>
 
-    <!-- شاشة الامتحان -->
-    <div id="exam-ui" class="box">
-        <div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; margin-bottom:15px;">
-            <h3 id="examTitleDisplay">--</h3>
-            <h3 id="timer" style="color:red;">00:00</h3>
+    <div class="main-container">
+        <!-- شاشة الدخول -->
+        <div id="login-ui" class="glass-box">
+            <div style="font-size: 50px; text-align: center;">🛡️</div>
+            <h2>بوابة الاختبارات الرقمية</h2>
+            <div class="input-group">
+                <input type="text" id="studentName" placeholder="أدخل اسمك الثلاثي للمتابعة">
+            </div>
+            <button class="btn-main btn-start" onclick="startExam()">ابدأ الاختبار الآن</button>
         </div>
-        <div id="quiz-content"></div>
-        <button onclick="submitExam()" style="width:100%; padding:12px; background:#007bff; color:white; border:none; margin-top:20px;">إنهاء وإرسال</button>
+
+        <!-- شاشة الامتحان -->
+        <div id="exam-ui" class="glass-box">
+            <div class="exam-header">
+                <h3 id="examTitleDisplay" style="margin:0; color:var(--purple-bright);">--</h3>
+                <div id="timer">00:00</div>
+            </div>
+            <div id="quiz-content"></div>
+            <button class="btn-main btn-submit" onclick="submitExam()">إنهاء وإرسال الإجابات 🚀</button>
+        </div>
     </div>
 
     <script>
@@ -33,35 +137,61 @@
 
         async function startExam() {
             studentName = document.getElementById('studentName').value;
-            if (!studentName) return alert("يرجى إدخال اسمك!");
+            if (!studentName || studentName.length < 5) return alert("يرجى إدخال اسمك الثلاثي بشكل صحيح!");
             
-            const res = await fetch('/api/get-exam');
-            examData = await res.json();
-            
-            document.getElementById('login-ui').style.display = 'none';
-            document.getElementById('exam-ui').style.display = 'block';
-            document.getElementById('examTitleDisplay').innerText = examData.title;
-            
-            renderQuestions();
-            runTimer(examData.duration * 60);
+            // جلب البيانات (تأكد من تشغيل السيرفر)
+            try {
+                const res = await fetch('/api/get-exam');
+                examData = await res.json();
+                
+                document.getElementById('login-ui').style.display = 'none';
+                document.getElementById('exam-ui').style.display = 'block';
+                document.getElementById('examTitleDisplay').innerText = examData.title;
+                
+                renderQuestions();
+                runTimer(examData.duration * 60);
+            } catch(e) {
+                alert("تعذر الاتصال بالسيرفر، تأكد من تشغيل المشروع.");
+            }
         }
 
         function renderQuestions() {
             const container = document.getElementById('quiz-content');
+            container.innerHTML = '';
             examData.questions.forEach((q, i) => {
-                let html = `<p><b>س${i+1}:</b> ${q.text}</p>`;
+                let html = `
+                    <div class="question-block">
+                        <div class="question-text">س${i+1}: ${q.text}</div>
+                        <div class="options-list">`;
+                
                 q.options.forEach((opt, j) => {
-                    html += `<label class="option"><input type="radio" name="q${i}" value="${j}"> ${opt}</label>`;
+                    html += `
+                        <label class="option-card">
+                            <input type="radio" name="q${i}" value="${j}">
+                            <span class="opt-text">${opt}</span>
+                        </label>`;
                 });
+                
+                html += `</div></div>`;
                 container.innerHTML += html;
             });
         }
 
         function runTimer(sec) {
             let t = sec;
-            setInterval(() => {
-                document.getElementById('timer').innerText = `${Math.floor(t/60)}:${t%60}`;
-                if (t-- <= 0) submitExam();
+            const timerEl = document.getElementById('timer');
+            const interval = setInterval(() => {
+                let mins = Math.floor(t / 60);
+                let secs = t % 60;
+                timerEl.innerText = `${mins < 10 ? '0'+mins : mins}:${secs < 10 ? '0'+secs : secs}`;
+                
+                // تحذير في آخر دقيقتين
+                if (t <= 120) timerEl.style.color = "#ff4757";
+
+                if (t-- <= 0) {
+                    clearInterval(interval);
+                    submitExam();
+                }
             }, 1000);
         }
 
@@ -73,13 +203,21 @@
             });
 
             const finalScore = `${score} / ${examData.questions.length}`;
-            await fetch('/api/submit-result', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ name: studentName, score: finalScore })
-            });
-
-            alert(`انتهى الامتحان! نتيجتك هي: ${finalScore}`);
+            
+            try {
+                await fetch('/api/submit-result', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        name: studentName, 
+                        score: finalScore,
+                        date: new Date().toLocaleString('ar-EG')
+                    })
+                });
+                alert(`أحسنت يا ${studentName}!\nتم إرسال إجاباتك بنجاح.\nنتيجتك هي: ${finalScore}`);
+            } catch(e) {
+                alert("حدث خطأ في الإرسال، سيتم عرض النتيجة فقط: " + finalScore);
+            }
             location.reload();
         }
     </script>
